@@ -1,0 +1,24 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "AllowEC2Operations",
+			"Effect": "Allow",
+			"Action": "ec2:*",
+			"Resource": "*"
+		},
+		{
+			"Sid": "ExplicitDenyIfNotOnCorporateNetwork",
+			"Effect": "Deny",
+			"Action": "ec2:*",
+			"Resource": "*",
+			"Condition": {
+				"NotIpAddress": {
+					"aws:SourceIp": [
+						"YOUR_PUBLIC_IP/32"
+					]
+				}
+			}
+		}
+	]
+}
