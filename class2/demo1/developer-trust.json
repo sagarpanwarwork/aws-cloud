@@ -1,0 +1,13 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "AllowCurrentSSOAdminToAssume",
+			"Effect": "Allow",
+			"Principal": {
+				"AWS": "arn:aws:iam::935827529399:role/aws-reserved/sso.amazonaws.com/ap-south-1/AWSReservedSSO_AdministratorAccess_68551d777d1e9b20"
+			},
+			"Action": "sts:AssumeRole"
+		}
+	]
+}
