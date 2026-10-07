@@ -1,0 +1,18 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "TrustDevOperator",
+			"Effect": "Allow",
+			"Principal": {
+				"AWS": "arn:aws:iam::<DEV_ACCOUNT_ID:role/Dev-CrossAccount-Operator-Role"
+			},
+			"Action": "sts:AssumeRole",
+			"Condition": {
+				"StringEquals": {
+					"sts:ExternalId": "ClassroomCrossAccount-2026"
+				}
+			}
+		}
+	]
+}

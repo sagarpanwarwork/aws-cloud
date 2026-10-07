@@ -1,0 +1,11 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "AllowAssumeProdRole",
+			"Effect": "Allow",
+			"Action": "sts:AssumeRole",
+			"Resource": "arn:aws:iam::<PROD_ACCOUNT_ID>:role/Prod-S3-Operator-Role"
+		}
+	]
+}
