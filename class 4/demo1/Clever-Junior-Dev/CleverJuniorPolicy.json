@@ -1,0 +1,23 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "CreateApplicationRoles",
+			"Effect": "Allow",
+			"Action": "iam:CreateRole",
+			"Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/AppDeployment-*"
+		},
+		{
+			"Sid": "AttachPoliciesToApplicationRoles",
+			"Effect": "Allow",
+			"Action": "iam:AttachRolePolicy",
+			"Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/AppDeployment-*"
+		},
+		{
+			"Sid": "AssumeApplicationRoles",
+			"Effect": "Allow",
+			"Action": "sts:AssumeRole",
+			"Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/AppDeployment-*"
+		}
+	]
+}
