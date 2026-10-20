@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euxo pipefail
+
+# Install Apache HTTP Server
+dnf install -y httpd
+
+# Start Apache now and enable it at boot
+systemctl enable --now httpd
+
+# Capture the instance hostname
+HOSTNAME=$(hostname)
+
+# Create the demo page
+cat > /var/www/html/index.html <<EOFHTML
+<!doctype html>
+<html>
+<head>
+    <title>AWS Compute Lab</title>
+</head>
+<body>
+    <h1>${target_name}</h1>
+    <p>Served by ${target_name}.</p>
+    <p>Hostname: $${HOSTNAME}</p>
+</body>
+</html>
+EOFHTML
