@@ -1,0 +1,54 @@
+digraph ZeronCloudWatchClass14 {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.3",
+    nodesep="0.45",
+    ranksep="0.55",
+    splines=ortho,
+    fontname="Arial",
+    label="ZERON ACADEMY  |  CLASS 14: CLOUDWATCH + AUTO SCALING LAB",
+    labelloc="t",
+    fontsize=22
+  ];
+  node [shape=box, style="rounded,filled", fillcolor="#F4F7FB", color="#5B6B82", penwidth=1.3, fontname="Arial", fontsize=11, margin="0.16,0.10"];
+  edge [color="#52677F", penwidth=1.5, arrowsize=0.8, fontname="Arial", fontsize=9];
+
+  browser [label="Student browser / curl\nHTTP requests + /error test", fillcolor="#EAF2FF", color="#4472C4"];
+  subgraph cluster_vpc {
+    label="VPC 10.40.0.0/16  |  Two public subnets / two AZs";
+    color="#8BA5C7"; style="rounded,dashed"; penwidth=1.4; fontsize=12; fontname="Arial";
+    alb [label="Application Load Balancer\nListener :80", fillcolor="#FFF2CC", color="#BF9000"];
+    tg [label="Target group\nHTTP :8080  |  /health", fillcolor="#FFF2CC", color="#BF9000"];
+    asg [label="EC2 Auto Scaling Group\nmin 2  |  desired 2  |  max 4", fillcolor="#E2F0D9", color="#70AD47"];
+    ec2a [label="EC2 instance A\nAmazon Linux 2023\nPython app + SSM Agent + CW Agent", fillcolor="#E2F0D9", color="#70AD47"];
+    ec2b [label="EC2 instance B\nAmazon Linux 2023\nPython app + SSM Agent + CW Agent", fillcolor="#E2F0D9", color="#70AD47"];
+  }
+
+  browser -> alb [label="HTTP :80"];
+  alb -> tg [label="forward"];
+  tg -> ec2a [label="health checks / requests"];
+  tg -> ec2b [label="health checks / requests"];
+  asg -> ec2a [style=dashed, label="maintains capacity"];
+  asg -> ec2b [style=dashed];
+  ssm [label="Systems Manager Run Command\nstarts bounded CPU stress", fillcolor="#FCE4D6", color="#C65911"];
+  cw [label="Amazon CloudWatch\nEC2 CPU + ALB metrics\nAlarms + dashboards", fillcolor="#E4DFEC", color="#8064A2"];
+  logs [label="CloudWatch Logs\n/zeron-academy/za-cw14/application", fillcolor="#E4DFEC", color="#8064A2"];
+  sns [label="SNS topic\nacademy-class14-alerts", fillcolor="#FCE4D6", color="#C65911"];
+  email [label="Confirmed email subscriber", fillcolor="#FCE4D6", color="#C65911"];
+  scaling [label="Target tracking policy\nASGAverageCPUUtilization = 50%\ninstance warmup = 180s", fillcolor="#DDEBF7", color="#4472C4"];
+  cloudtrail [label="CloudTrail Event history\nmanagement API activity", fillcolor="#F2F2F2", color="#7F7F7F"];
+
+  ssm -> ec2a [label="SSM command"];
+  ssm -> ec2b [label="SSM command"];
+  ec2a -> cw [label="CPU / network"];
+  ec2b -> cw [label="CPU / network"];
+  alb -> cw [label="RequestCount / 5XX / health"];
+  ec2a -> logs [label="agent ships app log"];
+  ec2b -> logs [label="agent ships app log"];
+  cw -> sns [label="alarm action"];
+  sns -> email [label="notification"];
+  cw -> scaling [label="CPU target metric"];
+  scaling -> asg [label="adjust desired capacity"];
+  cloudtrail -> asg [style=dotted, arrowhead=none, label="audit evidence"];
+}

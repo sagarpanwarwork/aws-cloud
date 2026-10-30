@@ -1,0 +1,148 @@
+#!/bin/bash
+set -euxo pipefail
+
+# Amazon Linux 2023 includes the SSM Agent. Install Python and the CloudWatch Agent.
+dnf install -y python3 amazon-cloudwatch-agent
+systemctl enable --now amazon-ssm-agent
+
+mkdir -p /opt/academy
+cat > /opt/academy/app.py <<'PYAPP'
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import logging
+import socket
+
+logging.basicConfig(
+    filename="/var/log/academy-app.log",
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+
+class Handler(BaseHTTPRequestHandler):
+    def _reply(self, status, message):
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(message.encode("utf-8"))))
+        self.end_headers()
+        self.wfile.write(message.encode("utf-8"))
+        logging.info("client=%s method=%s path=%s status=%s", self.client_address[0], self.command, self.path, status)
+
+    def do_GET(self):
+        path = self.path.split("?", 1)[0]
+        if path == "/health":
+            self._reply(200, "healthy\n")
+        elif path == "/error":
+            self._reply(500, "intentional classroom HTTP 500 response\n")
+        else:
+            self._reply(200, f"Zeron Academy CloudWatch lab\nhost={socket.gethostname()}\npath={path}\n")
+
+    def log_message(self, fmt, *args):
+        logging.info("http-access " + fmt, *args)
+
+server = ThreadingHTTPServer(("0.0.0.0", 8080), Handler)
+logging.info("application starting on port 8080")
+server.serve_forever()
+PYAPP
+
+cat > /opt/academy/cpu_stress.py <<'PYSTRESS'
+import argparse
+import multiprocessing as mp
+import os
+import time
+
+
+def burn_cpu(deadline):
+    value = 0
+    while time.monotonic() < deadline:
+        value = (value + 1) % 10000019
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Bounded CPU load for the Zeron Academy CloudWatch class")
+    parser.add_argument("--seconds", type=int, default=180)
+    args = parser.parse_args()
+
+    duration = max(10, min(args.seconds, 240))
+    deadline = time.monotonic() + duration
+    worker_count = max(1, os.cpu_count() or 1)
+
+    workers = [mp.Process(target=burn_cpu, args=(deadline,)) for _ in range(worker_count)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join()
+
+
+if __name__ == "__main__":
+    main()
+PYSTRESS
+
+chmod 755 /opt/academy/app.py /opt/academy/cpu_stress.py
+
+cat > /etc/systemd/system/academy-web.service <<'SERVICE'
+[Unit]
+Description=Zeron Academy CloudWatch classroom web application
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+ExecStart=/usr/bin/python3 /opt/academy/app.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+touch /var/log/academy-app.log
+chown ec2-user:ec2-user /var/log/academy-app.log
+systemctl daemon-reload
+systemctl enable --now academy-web.service
+
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "root",
+    "region": "${aws_region}"
+  },
+  "metrics": {
+    "namespace": "Academy/EC2",
+    "append_dimensions": {
+      "InstanceId": "$${aws:InstanceId}"
+    },
+    "metrics_collected": {
+      "mem": {
+        "measurement": ["mem_used_percent"],
+        "metrics_collection_interval": 60
+      },
+      "disk": {
+        "measurement": ["used_percent"],
+        "resources": ["/"],
+        "metrics_collection_interval": 60
+      }
+    }
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/academy-app.log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+CWCONFIG
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config \
+  -m ec2 \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+  -s
